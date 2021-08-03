@@ -1,0 +1,78 @@
+# this is the main controller for my robot in WEbots - Joohan
+from controller import Robot, DistanceSensor, Motor, Camera
+
+# time in [ms] of a simulation step and the max speed
+TIME_STEP = 32
+MAX_SPEED = 6.28
+
+# create the Robot instance.
+robot = Robot()
+
+# initialize devices (these are the distance/proximity sensors)
+ps = []
+psNames = [
+    'ps0', 'ps1', 'ps2', 'ps3',
+    'ps4', 'ps5', 'ps6', 'ps7'
+]
+
+for i in range(8):
+    ps.append(robot.getDevice(psNames[i]))
+    ps[i].enable(TIME_STEP)
+
+leftMotor = robot.getDevice('left wheel motor')
+rightMotor = robot.getDevice('right wheel motor')
+
+leftMotor.setPosition(float('inf'))
+leftMotor.setVelocity(0.0)
+
+rightMotor.setPosition(float('inf'))
+rightMotor.setVelocity(0.0)
+
+# infrared sensors
+left_ir = robot.getDevice('irsensor')
+left_ir.enable(TIME_STEP)
+
+right_ir = robot.getDevice('irsensor2')
+right_ir.enable(TIME_STEP)
+
+# feedback loop: step simulation until receiving an exit event
+while robot.step(TIME_STEP) != -1:
+    # read sensors outputs
+    psValues = []
+    for i in range(8):
+        psValues.append(ps[i].getValue())
+
+    #print infrared values
+    left_ir_value = left_ir.getValue()
+    right_ir_value = right_ir.getValue()
+    print("left: {} right: {}".format(left_ir_value, right_ir_value))
+    
+    # detect obstacles
+    right_obstacle = psValues[0] > 80.0 or psValues[1] > 80.0 or psValues[2] > 80.0
+    left_obstacle = psValues[5] > 80.0 or psValues[6] > 80.0 or psValues[7] > 80.0
+
+    # initialize motor speeds at 40% of MAX_SPEED.
+    leftSpeed  = 0.4 * MAX_SPEED
+    rightSpeed = 0.4 * MAX_SPEED
+    
+     # change directions based on infrared value
+    if (left_ir_value > right_ir_value) and (6 < left_ir_value < 15):
+        leftSpeed = -0.2*MAX_SPEED
+    if (right_ir_value > left_ir_value) and (6 < right_ir_value < 15):
+        rightSpeed = -0.2*MAX_SPEED
+    
+    # modify speeds according to obstacles
+    if left_obstacle:
+        # turn right
+        leftSpeed  = 0.150 * MAX_SPEED
+        rightSpeed = -0.150 * MAX_SPEED
+    elif right_obstacle:
+        # turn left
+        leftSpeed  = -0.150 * MAX_SPEED
+        rightSpeed = 0.150 * MAX_SPEED
+   
+    # write actuators inputs
+    leftMotor.setVelocity(leftSpeed)
+    rightMotor.setVelocity(rightSpeed)
+
+  
